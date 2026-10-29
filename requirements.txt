@@ -2,5 +2,3 @@ streamlit
 gTTS
 deep-translator
 Pillow
-bokeh==2.4.3
-streamlit-bokeh-events

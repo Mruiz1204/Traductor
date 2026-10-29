@@ -1,16 +1,9 @@
 import os
-import streamlit as st
-from bokeh.models.widgets import Button
-#from bokeh.io import show
-#from bokeh.models import Button
-from bokeh.models import CustomJS
-from streamlit_bokeh_events import streamlit_bokeh_events
-from PIL import Image
 import time
 import glob
-
-
-
+import streamlit as st
+import streamlit.components.v1 as components
+from PIL import Image
 from gtts import gTTS
 from deep_translator import GoogleTranslator
 
@@ -61,64 +54,74 @@ st.markdown("<h2 style=\"font-family:'Montserrat', sans-serif; font-weight:700; 
 st.title("TRADUCTOR DE VOZ 🎤")
 st.subheader("Escucho lo que quieres traducir.")
 
-
 image = Image.open('OIG7.jpg')
+st.image(image, width=300)
 
-st.image(image,width=300)
 with st.sidebar:
-    st.subheader("Traductor.")
-    st.write("Presiona el botón, cuando escuches la señal "
-                 "habla lo que quieres traducir, luego selecciona"   
-                 " la configuración de lenguaje que necesites.")
+    st.subheader("Traductor")
+    st.write("Presiona el botón «Escuchar», cuando se active habla lo que "
+             "quieres traducir. El texto reconocido aparecerá abajo; cópialo "
+             "y pégalo en el recuadro. Luego elige los idiomas y pulsa «Convertir».")
 
+st.write("Toca el botón y habla lo que quieres traducir 👇")
 
-st.write("Toca el Botón y habla lo que quires traducir")
+# ---- Micrófono con reconocimiento de voz del navegador (sin bokeh) ----
+# Usa webkitSpeechRecognition (mismo motor que el original) dentro de un
+# componente HTML. El texto reconocido se muestra para copiar y pegar.
+components.html(
+    """
+    <div style="font-family: 'Inter', sans-serif;">
+      <button id="rec" style="background:#e07a5f;color:#fff;border:none;
+        border-radius:10px;padding:12px 22px;font-size:16px;font-weight:600;cursor:pointer;">
+        Escuchar 🎤
+      </button>
+      <span id="status" style="margin-left:12px;color:#14303d;font-weight:600;"></span>
+      <div id="out" style="margin-top:14px;background:#f3f6f7;color:#14303d;
+        border-radius:10px;padding:12px;min-height:44px;font-size:16px;">
+        El texto reconocido aparecerá aquí…
+      </div>
+    </div>
+    <script>
+      const btn = document.getElementById('rec');
+      const out = document.getElementById('out');
+      const status = document.getElementById('status');
+      btn.onclick = function() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { out.innerText = "Tu navegador no soporta reconocimiento de voz. Usa Chrome."; return; }
+        const recognition = new SR();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'es-ES';
+        status.innerText = "🔴 Escuchando...";
+        let finalText = "";
+        recognition.onresult = function(e) {
+          let interim = "";
+          for (let i = e.resultIndex; i < e.results.length; ++i) {
+            if (e.results[i].isFinal) { finalText += e.results[i][0].transcript; }
+            else { interim += e.results[i][0].transcript; }
+          }
+          out.innerText = (finalText + interim) || "…";
+        };
+        recognition.onend = function() { status.innerText = "✅ Listo. Copia el texto y pégalo abajo."; };
+        recognition.onerror = function(ev) { status.innerText = "⚠️ Error: " + ev.error; };
+        recognition.start();
+      };
+    </script>
+    """,
+    height=200,
+)
 
-stt_button = Button(label=" Escuchar  🎤", width=300,  height=50)
+st.markdown("**Pega aquí el texto que dijiste (o escríbelo):**")
+text = st.text_input("Texto a traducir", placeholder="Escribe o pega el texto reconocido...")
 
-stt_button.js_on_event("button_click", CustomJS(code="""
-    var recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;  // Cambia a false
-    recognition.interimResults = true;
-    recognition.lang = 'es-ES';  // Puedes ajustar el idioma
- 
-    recognition.onresult = function (e) {
-        var value = "";
-        for (var i = e.resultIndex; i < e.results.length; ++i) {
-            if (e.results[i].isFinal) {
-                value += e.results[i][0].transcript;
-            }
-        }
-        if ( value != "") {
-            document.dispatchEvent(new CustomEvent("GET_TEXT", {detail: value}));
-        }
-    }
-    
-    recognition.onend = function() {
-        console.log("Reconocimiento detenido");
-    }
-    
-    recognition.start();
-"""))
-
-result = streamlit_bokeh_events(
-    stt_button,
-    events="GET_TEXT",
-    key="listen",
-    refresh_on_update=False,
-    override_height=75,
-    debounce_time=0)
-
-if result:
-    if "GET_TEXT" in result:
-        st.write(result.get("GET_TEXT"))
+if text:
     try:
         os.mkdir("temp")
-    except:
+    except Exception:
         pass
+
     st.title("Texto a Audio")
 
-    text = str(result.get("GET_TEXT"))
     in_lang = st.selectbox(
         "Selecciona el lenguaje de Entrada",
         ("Inglés", "Español", "Bengali", "Coreano", "Mandarín", "Japonés"),
@@ -135,7 +138,7 @@ if result:
         input_language = "zh-cn"
     elif in_lang == "Japonés":
         input_language = "ja"
-    
+
     out_lang = st.selectbox(
         "Selecciona el lenguaje de salida",
         ("Inglés", "Español", "Bengali", "Coreano", "Mandarín", "Japonés"),
@@ -152,7 +155,7 @@ if result:
         output_language = "zh-cn"
     elif out_lang == "Japonés":
         output_language = "ja"
-    
+
     english_accent = st.selectbox(
         "Selecciona el acento",
         (
@@ -166,12 +169,11 @@ if result:
             "Sudáfrica",
         ),
     )
-    
+
     if english_accent == "Defecto":
         tld = "com"
     elif english_accent == "Español":
         tld = "com.mx"
-    
     elif english_accent == "Reino Unido":
         tld = "co.uk"
     elif english_accent == "Estados Unidos":
@@ -184,33 +186,30 @@ if result:
         tld = "ie"
     elif english_accent == "Sudáfrica":
         tld = "co.za"
-    
-    
+
     def text_to_speech(input_language, output_language, text, tld):
         trans_text = GoogleTranslator(source=input_language, target=output_language).translate(text)
         tts = gTTS(trans_text, lang=output_language, tld=tld, slow=False)
         try:
             my_file_name = text[0:20]
-        except:
+        except Exception:
             my_file_name = "audio"
         tts.save(f"temp/{my_file_name}.mp3")
         return my_file_name, trans_text
-    
-    
+
     display_output_text = st.checkbox("Mostrar el texto")
-    
+
     if st.button("convertir"):
-        result, output_text = text_to_speech(input_language, output_language, text, tld)
-        audio_file = open(f"temp/{result}.mp3", "rb")
+        result_name, output_text = text_to_speech(input_language, output_language, text, tld)
+        audio_file = open(f"temp/{result_name}.mp3", "rb")
         audio_bytes = audio_file.read()
-        st.markdown(f"## Tú audio:")
+        st.markdown("## Tu audio:")
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
-    
+
         if display_output_text:
-            st.markdown(f"## Texto de salida:")
+            st.markdown("## Texto de salida:")
             st.write(f" {output_text}")
-    
-    
+
     def remove_files(n):
         mp3_files = glob.glob("temp/*mp3")
         if len(mp3_files) != 0:
@@ -222,15 +221,3 @@ if result:
                     print("Deleted ", f)
 
     remove_files(7)
-           
-
-
-        
-    
-
-
-
-        
-    
-
-
