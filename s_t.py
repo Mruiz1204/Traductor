@@ -12,10 +12,53 @@ import glob
 
 
 from gtts import gTTS
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 
-st.title("TRADUCTOR.")
+try:
+    _icon = Image.open('logo_mr.png')
+except Exception:
+    _icon = "🎤"
+st.set_page_config(page_title="Traductor de Voz · Miguel Ruiz", page_icon=_icon, layout="centered")
+
+# ---- Estilo personalizado: paleta azul petróleo + terracota (Miguel Ruiz) ----
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Inter:wght@300;400;600&display=swap');
+    .stApp {
+        background: linear-gradient(135deg, #1b3a4b 0%, #14303d 100%);
+        color: #e8eef0;
+        font-family: 'Inter', sans-serif;
+    }
+    .stApp, .stApp p, .stApp li, .stApp span, .stApp label,
+    .stMarkdown, [data-testid="stCaptionContainer"],
+    [data-testid="stWidgetLabel"], [data-testid="stWidgetLabel"] * {
+        color: #e8eef0 !important;
+    }
+    h1, h2, h3, h4 { font-family: 'Montserrat', sans-serif !important; color: #e07a5f !important; }
+    .stTextInput input, .stTextArea textarea,
+    .stSelectbox div[data-baseweb="select"] > div, .stNumberInput input {
+        background-color: #f3f6f7 !important; color: #14303d !important;
+    }
+    input::placeholder, textarea::placeholder { color: #5c7079 !important; }
+    [data-testid="stNotification"] * { color: #14303d !important; }
+    section[data-testid="stSidebar"] { background: #12272f; }
+    section[data-testid="stSidebar"] * { color: #e8eef0 !important; }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 { color: #e07a5f !important; }
+    .stButton>button {
+        background-color: #e07a5f; color: #fff !important; border-radius: 10px; border: none; font-weight: 600;
+    }
+    .stButton>button:hover { background-color: #c9583c; color: #fff !important; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown("<h2 style=\"font-family:'Montserrat', sans-serif; font-weight:700; color:#f2cc8f; margin-bottom:0;\">Miguel Ruiz</h2>", unsafe_allow_html=True)
+st.title("TRADUCTOR DE VOZ 🎤")
 st.subheader("Escucho lo que quieres traducir.")
 
 
@@ -74,8 +117,7 @@ if result:
     except:
         pass
     st.title("Texto a Audio")
-    translator = Translator()
-    
+
     text = str(result.get("GET_TEXT"))
     in_lang = st.selectbox(
         "Selecciona el lenguaje de Entrada",
@@ -145,8 +187,7 @@ if result:
     
     
     def text_to_speech(input_language, output_language, text, tld):
-        translation = translator.translate(text, src=input_language, dest=output_language)
-        trans_text = translation.text
+        trans_text = GoogleTranslator(source=input_language, target=output_language).translate(text)
         tts = gTTS(trans_text, lang=output_language, tld=tld, slow=False)
         try:
             my_file_name = text[0:20]
